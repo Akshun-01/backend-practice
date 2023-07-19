@@ -1,4 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
+const { validationResult } = require('express-validator');
+const User = require('../models/user');
 
 const HttpError = require('../models/http-error');
 
@@ -11,29 +13,53 @@ const DUMMY_USERS = [
     }
 ];
 
-const getUsers = (req, res, next) => {
-    res.json({user : DUMMY_USERS});
+const getUsers = async(req, res, next) => {
+    let users;
+    try{
+        users = await User.find({},'-password');
+    }catch(err){
+        return next(new HttpError(err,404));
+    }
+
+    res.json(users.map(user => user.toObject({getters:true})));
 }
 
-const signUp = (req, res, next) => {
+const signUp = async(req, res, next) => {
+    const errors = validationResult(req);
+    if(!errors.isEmpty()) {
+        return next( new HttpError("Invalid inputs", 422));
+    }
+
     const {name, email, password} = req.body;
-    if(DUMMY_USERS.find(u => u.email === email)){
+    let user;
+    try{
+        await user.findOne({email: email})
+    }catch(err){
+        return next(new HttpError(err, 404));
+    }
+
+    if(user){
         return next(new HttpError('User already registered, please login instead.', 404));
     }
-    const newUser = {
-        id: uuidv4(),
-        name,
-        email,
-        password
+
+    let newUser = new User({name, email, password});
+    try{
+        await newUser.save();
+    }catch(err){
+        return next(new HttpError(err,422));
     }
-    DUMMY_USERS.push(newUser);
 
     res.status(201).json({user: newUser});
 }
 
-const login = (req, res, next) => {
+const login = async(req, res, next) => {
     const {email, password} = req.body;
-    const user = DUMMY_USERS.find(u => u.email === email);
+    let user;
+    try{
+        await user.findOne({email: email})
+    }catch(err){
+        return next(new HttpError(err, 404));
+    }
 
     if(!user){
         return next(new HttpError("User with given email does not exists.", 404));
@@ -44,6 +70,7 @@ const login = (req, res, next) => {
 
     res.json({message : "Logged in successfully"})
 }
+
 exports.getUsers = getUsers;
 exports.signUp = signUp;
 exports.login = login;
