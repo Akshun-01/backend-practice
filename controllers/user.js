@@ -1,17 +1,7 @@
-const { v4: uuidv4 } = require('uuid');
 const { validationResult } = require('express-validator');
 const User = require('../models/user');
 
 const HttpError = require('../models/http-error');
-
-const DUMMY_USERS = [
-    {
-      id: 'u1',
-      name: 'Max Schwarz',
-      email: 'test@test.com',
-      password: 'testers'
-    }
-];
 
 const getUsers = async(req, res, next) => {
     let users;
@@ -33,7 +23,7 @@ const signUp = async(req, res, next) => {
     const {name, email, password} = req.body;
     let user;
     try{
-        await user.findOne({email: email})
+        user = await User.findOne({email: email});
     }catch(err){
         return next(new HttpError(err, 404));
     }
@@ -42,7 +32,12 @@ const signUp = async(req, res, next) => {
         return next(new HttpError('User already registered, please login instead.', 404));
     }
 
-    let newUser = new User({name, email, password});
+    let newUser = new User({
+        name, 
+        email, 
+        password,
+        places : []
+    });
     try{
         await newUser.save();
     }catch(err){
@@ -56,7 +51,7 @@ const login = async(req, res, next) => {
     const {email, password} = req.body;
     let user;
     try{
-        await user.findOne({email: email})
+        user = await User.findOne({email: email})
     }catch(err){
         return next(new HttpError(err, 404));
     }
